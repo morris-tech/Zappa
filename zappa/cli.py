@@ -1193,7 +1193,8 @@ class ZappaCLI(object):
             self.zappa.schedule_events(
                 lambda_arn=function_response['Configuration']['FunctionArn'],
                 lambda_name=self.lambda_name,
-                events=events
+                events=events,
+                use_alb=self.use_alb,
             )
 
         # Add async tasks SNS

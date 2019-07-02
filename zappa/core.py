@@ -2637,7 +2637,7 @@ class Zappa(object):
 
         return permission_response
 
-    def schedule_events(self, lambda_arn, lambda_name, events, default=True):
+    def schedule_events(self, lambda_arn, lambda_name, events, default=True, use_alb=False):
         """
         Given a Lambda ARN, name and a list of events, schedule this as CloudWatch Events.
 
@@ -2657,6 +2657,9 @@ class Zappa(object):
         # We probably want to execute the latest code.
         # if default:
         #     lambda_arn = lambda_arn + ":$LATEST"
+
+        if use_alb:
+            lambda_arn = lambda_arn + ":{alias}".format(alias=ALB_LAMBDA_ALIAS)
 
         self.unschedule_events(lambda_name=lambda_name, lambda_arn=lambda_arn, events=events,
                                excluded_source_services=pull_services)
