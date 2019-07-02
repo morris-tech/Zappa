@@ -44,7 +44,7 @@ from click.globals import push_context
 from dateutil import parser
 from datetime import datetime, timedelta
 
-from .core import Zappa, logger, API_GATEWAY_REGIONS
+from .core import Zappa, logger, API_GATEWAY_REGIONS, ALB_LAMBDA_ALIAS
 from .utilities import (check_new_version_available, detect_django_settings,
                   detect_flask_apps, parse_s3_url, human_size,
                   validate_name, InvalidAwsLambdaName, get_venv_from_python_version,
@@ -1248,6 +1248,9 @@ class ZappaCLI(object):
         except botocore.exceptions.ClientError as e: # pragma: no cover
             raise ClickException("Function does not exist, you should deploy first. Ex: zappa deploy {}. "
                   "Proceeding to unschedule CloudWatch based events.".format(self.api_stage))
+
+        if self.use_alb:
+            function_arn = function_arn + ':{alias}'.format(alias=ALB_LAMBDA_ALIAS)
 
         print("Unscheduling..")
         self.zappa.unschedule_events(
