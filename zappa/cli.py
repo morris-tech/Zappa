@@ -784,7 +784,7 @@ class ZappaCLI(object):
         endpoint_url = ''
         deployment_string = click.style("Deployment complete", fg="green", bold=True) + "!"
 
-        if self.use_alb:
+        if self.use_alb and self.manage_alb:
             kwargs = dict(
                 lambda_arn=self.lambda_arn,
                 lambda_name=self.lambda_name,
@@ -1113,7 +1113,7 @@ class ZappaCLI(object):
             if confirm != 'y':
                 return
 
-        if self.use_alb:
+        if self.use_alb and self.manage_alb:
             self.zappa.undeploy_lambda_alb(self.lambda_name)
 
         if self.use_apigateway:
@@ -2101,6 +2101,7 @@ class ZappaCLI(object):
         # Load ALB-related settings
         self.use_alb = self.stage_config.get('alb_enabled', False)
         self.alb_vpc_config = self.stage_config.get('alb_vpc_config', {})
+        self.manage_alb = self.stage_config('manage_alb', True)
 
         # Additional tags
         self.tags = self.stage_config.get('tags', {})
