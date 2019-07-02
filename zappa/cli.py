@@ -840,6 +840,8 @@ class ZappaCLI(object):
             if self.stage_config.get('touch', True):
                 self.touch_endpoint(endpoint_url)
 
+        self.publish()
+
         # Finally, delete the local copy our zip package
         if not source_zip:
             if self.stage_config.get('delete_local_zip', True):
@@ -933,7 +935,8 @@ class ZappaCLI(object):
         kwargs = dict(
             bucket=self.s3_bucket_name,
             function_name=self.lambda_name,
-            num_revisions=self.num_retained_versions
+            num_revisions=self.num_retained_versions,
+            publish=False,
         )
         if source_zip and source_zip.startswith('s3://'):
             bucket, key_name = parse_s3_url(source_zip)
@@ -967,7 +970,8 @@ class ZappaCLI(object):
                                                         memory_size=self.memory_size,
                                                         runtime=self.runtime,
                                                         aws_environment_variables=self.aws_environment_variables,
-                                                        aws_kms_key_arn=self.aws_kms_key_arn
+                                                        aws_kms_key_arn=self.aws_kms_key_arn,
+                                                        publish=False,
                                                     )
 
         # Finally, delete the local copy our zip package
@@ -2736,6 +2740,10 @@ class ZappaCLI(object):
                 " Status check on the deployed lambda failed." +
                 " A GET request to '" + touch_path + "' yielded a " +
                 click.style(str(req.status_code), fg="red", bold=True) + " response code.")
+
+    def publish(self):
+        self.zappa.publish_lambda_function(function_name=self.lambda_name, create_alias=self.use_alb)
+
 
 ####################################################################
 # Main

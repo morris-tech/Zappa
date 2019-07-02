@@ -1089,19 +1089,9 @@ class Zappa(object):
         response = self.lambda_client.create_function(**kwargs)
 
         resource_arn = response['FunctionArn']
-        version = response['Version']
 
-        # If we're using an ALB, let's create an alias mapped to the newly
-        # created function. This allows clean, no downtime association when
-        # using application load balancers as an event source.
-        # See: https://github.com/Miserlou/Zappa/pull/1730
-        #      https://github.com/Miserlou/Zappa/issues/1823
-        if use_alb:
-            self.lambda_client.create_alias(
-                FunctionName=resource_arn,
-                FunctionVersion=version,
-                Name=ALB_LAMBDA_ALIAS,
-            )
+        if publish:
+            self.publish_lambda_function(function_name=resource_arn, create_alias=use_alb)
 
         if self.tags:
             self.lambda_client.tag_resource(Resource=resource_arn, Tags=self.tags)
@@ -1127,31 +1117,9 @@ class Zappa(object):
 
         response = self.lambda_client.update_function_code(**kwargs)
         resource_arn = response['FunctionArn']
-        version = response['Version']
 
-        # If the lambda has an ALB alias, let's update the alias
-        # to point to the newest version of the function. We have to use a GET
-        # here, as there's no HEAD-esque call to retrieve metadata about a
-        # function alias.
-        # Related: https://github.com/Miserlou/Zappa/pull/1730
-        #          https://github.com/Miserlou/Zappa/issues/1823
-        try:
-            response = self.lambda_client.get_alias(
-                FunctionName=function_name,
-                Name=ALB_LAMBDA_ALIAS,
-            )
-            alias_exists = True
-        except botocore.exceptions.ClientError as e:  # pragma: no cover
-            if "ResourceNotFoundException" not in e.response["Error"]["Code"]:
-                raise e
-            alias_exists = False
-
-        if alias_exists:
-            self.lambda_client.update_alias(
-                FunctionName=function_name,
-                FunctionVersion=version,
-                Name=ALB_LAMBDA_ALIAS,
-            )
+        if publish:
+            self.publish_lambda_function(function_name=function_name)
 
         if num_revisions:
             # Find the existing revision IDs for the given function
@@ -1230,6 +1198,45 @@ class Zappa(object):
             self.lambda_client.tag_resource(Resource=resource_arn, Tags=self.tags)
 
         return resource_arn
+
+    def publish_lambda_function(self, function_name, create_alias=False, alias_name=None):
+        if alias_name is None:
+            alias_name = ALB_LAMBDA_ALIAS
+
+        response = self.lambda_client.publish_version(FunctionName=function_name)
+        version = response['Version']
+
+        # If the lambda has an ALB alias, let's update the alias
+        # to point to the newest version of the function. We have to use a GET
+        # here, as there's no HEAD-esque call to retrieve metadata about a
+        # function alias.
+        # Related: https://github.com/Miserlou/Zappa/pull/1730
+        #          https://github.com/Miserlou/Zappa/issues/1823
+        try:
+            self.lambda_client.get_alias(
+                FunctionName=function_name,
+                Name=alias_name,
+            )
+        except botocore.exceptions.ClientError as e:  # pragma: no cover
+            if "ResourceNotFoundException" not in e.response["Error"]["Code"]:
+                raise e
+            # If we're using an ALB, let's create an alias mapped to the newly
+            # created function. This allows clean, no downtime association when
+            # using application load balancers as an event source.
+            # See: https://github.com/Miserlou/Zappa/pull/1730
+            #      https://github.com/Miserlou/Zappa/issues/1823
+            if create_alias:
+                self.lambda_client.create_alias(
+                    FunctionName=function_name,
+                    FunctionVersion=version,
+                    Name=alias_name,
+                )
+        else:
+            self.lambda_client.update_alias(
+                FunctionName=function_name,
+                FunctionVersion=version,
+                Name=alias_name,
+            )
 
     def invoke_lambda_function( self,
                                 function_name,
