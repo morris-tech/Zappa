@@ -2101,7 +2101,7 @@ class ZappaCLI(object):
         # Load ALB-related settings
         self.use_alb = self.stage_config.get('alb_enabled', False)
         self.alb_vpc_config = self.stage_config.get('alb_vpc_config', {})
-        self.manage_alb = self.stage_config('manage_alb', True)
+        self.manage_alb = self.stage_config.get('manage_alb', True)
 
         # Additional tags
         self.tags = self.stage_config.get('tags', {})
